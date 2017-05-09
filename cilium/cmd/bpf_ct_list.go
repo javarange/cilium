@@ -30,11 +30,11 @@ var bpfCtListCmd = &cobra.Command{
 	PreRun: requireEndpointIDorGlobal,
 	Run: func(cmd *cobra.Command, args []string) {
 		if args[0] == "global" {
-			dumpCtProto(ctmap.MapName6+args[0], ctmap.CtTypeIPv6Global)
-			dumpCtProto(ctmap.MapName4+args[0], ctmap.CtTypeIPv4Global)
+			dumpCtProto(ctmap.MapName6Global, "")
+			dumpCtProto(ctmap.MapName4Global, "")
 		} else {
-			dumpCtProto(ctmap.MapName6+args[0], ctmap.CtTypeIPv6)
-			dumpCtProto(ctmap.MapName4+args[0], ctmap.CtTypeIPv4)
+			dumpCtProto(ctmap.MapName6, args[0])
+			dumpCtProto(ctmap.MapName4, args[0])
 		}
 	},
 }
@@ -43,19 +43,18 @@ func init() {
 	bpfCtCmd.AddCommand(bpfCtListCmd)
 }
 
-func dumpCtProto(name string, ctType ctmap.CtType) {
-	file := bpf.MapPath(name)
+func dumpCtProto(mapType, eID string) {
 
-	fd, err := bpf.ObjGet(file)
+	file := bpf.MapPath(mapType + eID)
+	m, err := bpf.OpenMap(file)
+	defer m.Close()
+
 	if err != nil {
-		Fatalf("Unable to open %s: %s\n", file, err)
+		Fatalf("Unable to open map %s: %s", file, err)
 	}
-
-	m := ctmap.CtMap{Fd: fd, Type: ctType}
-	out, err := m.Dump()
+	out, err := ctmap.ToString(m, mapType)
 	if err != nil {
-		Fatalf("Error while dumping BPF Map: %s\n", err)
+		Fatalf("Error while dumping BPF Map: %s", err)
 	}
-
 	fmt.Println(out)
 }
